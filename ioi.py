@@ -10,7 +10,6 @@ st.title("📍 해외 소매치기 주의 장소 공유 서비스")
 st.info("여행객들이 직접 제보한 실시간 위험 지역 지도입니다.")
 
 # 2. 데이터 관리 (세션 저장소 활용)
-# *브라우저를 새로고침하면 초기화됩니다. 영구 저장은 추후 DB 연결이 필요합니다.
 if 'locations' not in st.session_state:
     st.session_state.locations = [
         {"name": "파리 루브르 박물관", "lat": 48.8606, "lon": 2.3376, "desc": "설문조사단 접근 주의"},
@@ -23,13 +22,14 @@ with st.sidebar:
     st.header("📢 위험 장소 제보")
     with st.form("report_form"):
         new_name = st.text_input("장소 명칭 (예: 에펠탑 근처)")
-        new_lat = st.number_input("위도 (Latitude)", value=0.0, format="%.6f")
-        new_lon = st.number_input("경도 (Longitude)", value=0.0, format="%.6f")
+        # 위도/경도 초기값을 0.0이 아닌 지도 중심점 근처로 설정하면 입력이 더 편합니다.
+        new_lat = st.number_input("위도 (Latitude)", value=45.0, format="%.6f")
+        new_lon = st.number_input("경도 (Longitude)", value=15.0, format="%.6f")
         new_desc = st.text_area("위험 내용/수법")
         submit_button = st.form_submit_button("제보 등록")
         
         if submit_button:
-            if new_name and new_lat != 0:
+            if new_name:
                 st.session_state.locations.append({
                     "name": new_name, "lat": new_lat, "lon": new_lon, "desc": new_desc
                 })
@@ -48,7 +48,7 @@ for loc in st.session_state.locations:
         popup=folium.Popup(f"<b>{loc['name']}</b><br>{loc['desc']}", max_width=300),
         tooltip=loc['name'],
         icon=folium.Icon(color='red', icon='warning', prefix='fa')
-    ).addTo(m)
+    ).add_to(m)  # <--- 이 부분의 오타를 수정했습니다!
 
 # 지도 화면에 출력
 st_folium(m, width="100%", height=550)
@@ -58,4 +58,3 @@ st.divider()
 st.subheader("📋 전체 제보 목록")
 df = pd.DataFrame(st.session_state.locations)
 st.dataframe(df, use_container_width=True)
-
