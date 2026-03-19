@@ -4,104 +4,84 @@ from streamlit_folium import st_folium
 import pandas as pd
 
 # 1. 웹페이지 기본 설정
-st.set_page_config(page_title="SafeTrip - 해외 소매치기 제보 지도", layout="wide")
+st.set_page_config(page_title="SafeTrip - 정밀 위치 제보", layout="wide")
 
-st.title("📍 해외 소매치기 주의 장소 공유 서비스")
-st.info("지도를 움직여 제보할 위치를 화면 중앙의 🔴 마커에 맞춰주세요.")
+st.title("📍 해외 소매치기 정밀 제보 시스템")
+st.info("지도를 움직여 화면 중앙의 **[+] 조준점**에 위험 지역을 맞춰주세요.")
 
-# 2. 데이터 관리 (세션 저장소 활용)
+# 2. 데이터 관리
 if 'locations' not in st.session_state:
     st.session_state.locations = [
         {"name": "파리 루브르 박물관", "lat": 48.8606, "lon": 2.3376, "desc": "설문조사단 접근 주의"},
-        {"name": "로마 테르미니역", "lat": 41.9009, "lon": 12.5020, "desc": "티켓 머신 근처 소매치기 빈번"},
-        {"name": "바르셀로나 람블라스 거리", "lat": 41.3817, "lon": 2.1728, "desc": "오물 뿌리기 수법 주의"}
+        {"name": "로마 테르미니역", "lat": 41.9009, "lon": 12.5020, "desc": "티켓 머신 근처 소매치기 빈번"}
     ]
 
-# 초기 지도 중심 설정 (마지막 제보 위치 혹은 기본값)
+# 초기 지도 중심 설정
 if 'map_center' not in st.session_state:
-    st.session_state.map_center = [48.8566, 2.3522]  # 파리 기준
+    st.session_state.map_center = [48.8566, 2.3522]
 
-# 3. 지도 표시 영역 및 위치 캡처
-st.subheader("⚠️ 실시간 위험 지도 및 위치 선택")
+# 3. 지도 생성 및 조준점 추가
+m = folium.Map(location=st.session_state.map_center, zoom_start=15)
 
-# 지도 위에 고정된 마커 아이콘을 표시하기 위한 CSS (지도가 움직여도 화면 중앙에 고정)
-st.markdown(
-    """
-    <style>
-    .center-marker {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -100%);
-        z-index: 1000;
-        pointer-events: none;
-        font-size: 30px;
-    }
-    .map-container {
-        position: relative;
-    }
-    </style>
-    """, unsafe_allow_html=True
-)
-
-# 지도 생성
-m = folium.Map(location=st.session_state.map_center, zoom_start=13)
-
-# 기존 제보된 마커들 표시
+# 기존 제보 마커 표시
 for loc in st.session_state.locations:
     folium.Marker(
         location=[loc['lat'], loc['lon']],
-        popup=folium.Popup(f"<b>{loc['name']}</b><br>{loc['desc']}", max_width=300),
-        tooltip=loc['name'],
+        popup=f"<b>{loc['name']}</b>",
         icon=folium.Icon(color='red', icon='warning', prefix='fa')
     ).add_to(m)
 
-# 지도 출력 및 변화 감지
-with st.container():
-    # 지도 컨테이너 안에 십자 마커 배치
-    st.markdown('<div class="map-container">', unsafe_allow_html=True)
-    map_data = st_folium(m, width="100%", height=500, key="main_map")
-    # 지도 정중앙에 고정될 시각적 표시 (이모지 혹은 아이콘)
-    st.markdown('<div class="center-marker">📍</div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+# [중요] 지도 정중앙에 고정된 조준점(Crosshair) HTML 삽입
+# 이 코드는 지도의 div 내부에 직접 UI를 그려서 위치가 절대 안 밀립니다.
+img_center_marker = """
+<div style="
+    position: fixed; 
+    top: 50%; 
+    left: 50%; 
+    width: 40px; 
+    height: 40px; 
+    margin-top: -20px; 
+    margin-left: -20px; 
+    z-index: 9999; 
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+">
+    <div style="position: absolute; width: 2px; height: 100%; background: red;"></div>
+    <div style="position: absolute; width: 100%; height: 2px; background: red;"></div>
+    <div style="width: 10px; height: 10px; border: 2px solid red; border-radius: 50%; background: white;"></div>
+</div>
+"""
+m.get_root().html.add_child(folium.Element(img_center_marker))
 
-# 지도가 움직였을 때 현재 중심 좌표 가져오기
-current_lat = st.session_state.map_center[0]
-current_lon = st.session_state.map_center[1]
+# 지도 렌더링
+map_data = st_folium(m, width="100%", height=500, key="center_map")
 
-if map_data['center']:
-    current_lat = map_data['center']['lat']
-    current_lon = map_data['center']['lng']
+# 현재 지도의 중심 좌표 캡처
+c_lat = map_data['center']['lat'] if map_data['center'] else st.session_state.map_center[0]
+c_lng = map_data['center']['lng'] if map_data['center'] else st.session_state.map_center[1]
 
-# 4. 사이드바: 현재 중앙 좌표 기반 제보 입력란
-with st.sidebar:
-    st.header("📢 위험 장소 제보")
-    st.write("지도 중앙의 좌표가 자동으로 입력됩니다.")
-    
-    with st.form("report_form"):
-        new_name = st.text_input("장소 명칭 (예: 에펠탑 근처)")
-        # 지도 중심 좌표를 표시 (수정 가능하게 하려면 number_input 유지, 아니면 text로 고정)
-        st.write(f"**선택된 위도:** `{current_lat:.6f}`")
-        st.write(f"**선택된 경도:** `{current_lon:.6f}`")
-        new_desc = st.text_area("위험 내용/수법")
-        
-        submit_button = st.form_submit_button("현재 위치로 제보 등록")
-        
-        if submit_button:
-            if new_name:
-                st.session_state.locations.append({
-                    "name": new_name, 
-                    "lat": current_lat, 
-                    "lon": current_lon, 
-                    "desc": new_desc
-                })
-                # 등록 후 지도가 해당 위치를 유지하도록 세션 업데이트
-                st.session_state.map_center = [current_lat, current_lon]
-                st.success("제보가 완료되었습니다!")
-                st.rerun()
-
-# 5. 하단 데이터 표
+# 4. 제보 입력 양식 (지도 아래 또는 옆)
 st.divider()
-st.subheader("📋 전체 제보 목록")
-df = pd.DataFrame(st.session_state.locations)
-st.dataframe(df, use_container_width=True)
+col1, col2 = st.columns([1, 2])
+
+with col1:
+    st.subheader("📢 현재 위치 제보")
+    with st.form("report_form", clear_on_submit=True):
+        new_name = st.text_input("장소 명칭", placeholder="예: 에펠탑 앞 광장")
+        st.caption(f"🎯 좌표: {c_lat:.5f}, {c_lng:.5f}")
+        new_desc = st.text_area("위험 내용", placeholder="수법이나 주의사항을 적어주세요.")
+        
+        submitted = st.form_submit_button("이 위치 제보하기")
+        if submitted and new_name:
+            st.session_state.locations.append({
+                "name": new_name, "lat": c_lat, "lon": c_lng, "desc": new_desc
+            })
+            st.session_state.map_center = [c_lat, c_lng]
+            st.success("제보가 완료되었습니다!")
+            st.rerun()
+
+with col2:
+    st.subheader("📋 전체 제보 목록")
+    st.dataframe(pd.DataFrame(st.session_state.locations), use_container_width=True)
