@@ -9,7 +9,7 @@ st.set_page_config(page_title="SafeTrip - 전세계 소매치기 지도", layout
 
 # 2. 구글 시트 연결 (URL을 본인의 시트 주소로 교체하세요)
 # 주의: 시트 공유 설정이 '편집자(Editor)'로 되어 있어야 저장이 가능합니다.
-SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/여러분의_시트_ID/edit#gid=0"
+SPREADSHEET_URL = "https://docs.google.com/spreadsheets/d/1XettC0vk6-vpCx9LQtEX-YgwU57oOWp5AKzrYFNOFAY/edit?usp=sharing"
 conn = st.connection("gsheets", type=GSheetsConnection)
 
 # 데이터 불러오기 함수 (캐시를 사용하지 않아야 실시간 업데이트 확인 가능)
